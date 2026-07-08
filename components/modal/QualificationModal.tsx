@@ -16,25 +16,34 @@ import {
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/**
+ * Persiste el lead en Supabase via API Route.
+ * Fire-and-forget: nunca bloquea el flujo del usuario al WhatsApp.
+ */
+async function persistLead(data: {
+  tipoNegocio: string;
+  volumenMensual: string;
+  urgencia: string;
+}) {
+  try {
+    await fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // Silencioso — el redirect a WhatsApp ya ocurrió, esto es best-effort.
+  }
+}
+
 export function QualificationModal() {
-  const {
-    isOpen,
-    step,
-    data,
-    close,
-    next,
-    back,
-    setTipoNegocio,
-    setVolumenMensual,
-    setUrgencia,
-    reset,
-  } = useQualificationModal();
+  const { isOpen, step, data, close, next, back, setTipoNegocio, setVolumenMensual, setUrgencia, reset } =
+    useQualificationModal();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
   function handleClose() {
     close();
-    // Pequeño delay para no ver el reset mientras la salida todavía anima.
     setTimeout(() => {
       reset();
       setIsDone(false);
@@ -42,15 +51,28 @@ export function QualificationModal() {
     }, 300);
   }
 
-  function handleFinish() {
+  async function handleFinish() {
+    if (!data.tipoNegocio || !data.volumenMensual || !data.urgencia) return;
     setIsSubmitting(true);
+
+    // Construir URL de WhatsApp primero (operación síncrona, nunca falla).
+    const waUrl = buildWhatsAppUrl(data);
+
+    // Mostrar estado de éxito inmediatamente sin esperar a Supabase.
+    setIsSubmitting(false);
+    setIsDone(true);
+
+    // Persistir lead y redirigir en paralelo.
+    void persistLead({
+      tipoNegocio: data.tipoNegocio,
+      volumenMensual: data.volumenMensual,
+      urgencia: data.urgencia,
+    });
+
+    // Pequeño delay para que el usuario vea el checkmark antes del redirect.
     setTimeout(() => {
-      setIsSubmitting(false);
-      setIsDone(true);
-      setTimeout(() => {
-        window.location.href = buildWhatsAppUrl(data);
-      }, 1200);
-    }, 700);
+      window.location.href = waUrl;
+    }, 1400);
   }
 
   const canAdvance =
@@ -68,6 +90,7 @@ export function QualificationModal() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
+          {/* Backdrop */}
           <motion.div
             aria-hidden="true"
             onClick={handleClose}
@@ -77,6 +100,7 @@ export function QualificationModal() {
             exit={{ opacity: 0 }}
           />
 
+          {/* Modal */}
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -87,16 +111,20 @@ export function QualificationModal() {
             transition={{ duration: 0.25, ease: EASE }}
             className="relative w-full max-w-md overflow-hidden rounded-card border border-border-subdued bg-surface-1 shadow-glow-accent"
           >
+            {/* Línea de brillo superior */}
             <div
               aria-hidden="true"
-              className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-orange/60 to-transparent"
             />
 
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-border-subdued px-6 py-4">
-              <Logo />
+              <Logo variant="compact" />
               <div className="flex items-center gap-4">
                 {!isDone && (
-                  <span className="font-mono text-caption text-text-secondary">{step}/3</span>
+                  <span className="font-mono text-caption text-text-secondary">
+                    {step}/3
+                  </span>
                 )}
                 <button
                   type="button"
@@ -109,6 +137,19 @@ export function QualificationModal() {
               </div>
             </div>
 
+            {/* Barra de progreso milimétrica */}
+            {!isDone && (
+              <div aria-hidden="true" className="h-px bg-border-subdued">
+                <motion.div
+                  className="h-full bg-brand-orange"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${(step / 3) * 100}%` }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                />
+              </div>
+            )}
+
+            {/* Contenido del paso */}
             <div className="relative h-[340px] px-6 py-8">
               <AnimatePresence mode="wait">
                 {isDone ? (
@@ -126,9 +167,14 @@ export function QualificationModal() {
                     >
                       <Check className="h-7 w-7 text-success" strokeWidth={1.5} />
                     </motion.div>
-                    <p className="text-body-base text-text-primary">
-                      Cargando entorno seguro de WhatsApp...
-                    </p>
+                    <div>
+                      <p className="text-body-base text-text-primary">
+                        Cargando entorno seguro de WhatsApp...
+                      </p>
+                      <p className="mt-1 text-caption text-text-secondary">
+                        Tu consulta está siendo procesada.
+                      </p>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -187,7 +233,8 @@ export function QualificationModal() {
                             ¿Cuál es tu urgencia real?
                           </h2>
                           <p className="mt-1 text-body-base text-text-secondary">
-                            Tomamos 8 proyectos por mes. Esto nos dice si hay lugar para vos ahora.
+                            Tomamos 8 proyectos por mes. Esto nos dice si hay lugar para vos
+                            ahora.
                           </p>
                         </div>
                         <Select
@@ -206,6 +253,7 @@ export function QualificationModal() {
               </AnimatePresence>
             </div>
 
+            {/* Footer del modal */}
             {!isDone && (
               <div className="flex items-center justify-between border-t border-border-subdued px-6 py-4">
                 <Button
@@ -222,7 +270,7 @@ export function QualificationModal() {
                   </Button>
                 ) : (
                   <Button onClick={handleFinish} disabled={!canAdvance || isSubmitting}>
-                    {isSubmitting ? "Procesando..." : "Confirmar y abrir WhatsApp"}
+                    {isSubmitting ? "Procesando..." : "Abrir WhatsApp"}
                   </Button>
                 )}
               </div>

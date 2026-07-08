@@ -61,3 +61,54 @@ Cuando esté listo n8n + Supabase: el punto de integración es
 handleFinish()`, hacer un `fetch` a `N8N_WEBHOOK_URL` con `data` antes de
 redirigir a WhatsApp, para que el lead quede persistido y el Cerebro IA
 pueda tomarlo por Function Calling.
+
+## 6. Setup Supabase — Base de datos de leads
+
+### 6.1 Crear la tabla `leads`
+
+En el **SQL Editor** de tu proyecto Supabase, ejecutar:
+
+```sql
+CREATE TABLE IF NOT EXISTS public.leads (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo_negocio    TEXT        NOT NULL,
+  volumen_mensual TEXT        NOT NULL,
+  urgencia        TEXT        NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  wa_redirect_at  TIMESTAMPTZ,
+  source          TEXT        DEFAULT 'website' NOT NULL,
+  ip_country      TEXT
+);
+
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+
+-- Solo INSERT anónimo (el sitio inserta, nadie lee desde el browser).
+CREATE POLICY "Solo INSERT anónimo" ON public.leads
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE INDEX leads_created_at_idx ON public.leads (created_at DESC);
+```
+
+### 6.2 Variables de entorno en Vercel
+
+| Variable | Dónde encontrarla |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → anon public key |
+
+### 6.3 Ver los leads capturados
+
+Supabase Dashboard → Table Editor → leads. Filtrar por:
+- `urgencia = 'Quiero implementar este mes'` → leads calientes
+- `created_at DESC` → leads más recientes
+
+El campo `ip_country` es rellenado automáticamente por Vercel (gratis).
+
+## 7. Fotos de casos de éxito
+
+Agregar en `/public/images/casos/`:
+- `quinta-los-rubiales.webp` (o .jpg)
+- `terrazas-del-bosque.webp` (o .jpg)
+- `castello.webp` (o .jpg)
+
+Next.js aplica automáticamente el tratamiento cinemático (escala de grises + contraste).

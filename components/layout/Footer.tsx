@@ -11,7 +11,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-16 md:px-12 md:py-24">
         <div className="grid gap-12 md:grid-cols-4">
           <div className="space-y-4 md:col-span-2">
-            <Logo />
+            <Logo variant="full" />
             <p className="max-w-sm text-body-base text-text-secondary">{SITE.description}</p>
             <Badge variant="success" withDot>
               Sistema en línea 24/7

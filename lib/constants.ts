@@ -6,7 +6,7 @@ export const SITE = {
   tagline: "Escalá sin fricción. Operá sin límites.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://speranza.com.py",
   locationLabel: "Luque, Paraguay",
-  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "595981000000",
+  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "595984274377",
   description:
     "Automatizamos el filtrado y cierre de ventas por WhatsApp para negocios high-ticket en Paraguay mediante asistentes de Inteligencia Artificial.",
 };

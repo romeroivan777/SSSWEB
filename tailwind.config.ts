@@ -16,6 +16,7 @@ const config: Config = {
         "action-primary": "#FFFFFF",
         "action-text": "#000000",
         "accent-tech": "#0057FF",
+        "brand-orange": "#E8890C",
         success: "#10B981",
         danger: "#EF4444",
       },
